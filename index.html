@@ -2,41 +2,49 @@
 <html lang="es">
 <head>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // 1. CONFIGURACIÓN
+  const supabaseUrl = 'https://nwiqgavvpktzoumzslwh.supabase.co'; // Sin /Reservas
+  const supabaseKey = 'TU_API_KEY_ANON'; 
+  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-  <script>
-    // 1. CONFIGURACIÓN (Pon esto arriba del todo)
-    const supabaseUrl = 'https://nwiqgavvpktzoumzslwh.supabase.co';
-    const supabaseKey = 'sb_publishable_QuiSX4nCgLMuFv7JgmCDzA_7b4YwU7e';
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-  
-    // 2. CONTROL DE ACCESO (Ejecutar nada más abrir la app)
-    async function checkSession() {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-            // Si hay sesión, inicializamos la app normal
-            console.log("Sesión iniciada");
-            initApp(); 
-        } else {
-            // Si no hay sesión, dibujamos el formulario de login
-            mostrarPantallaLogin();
-        }
-    }
-  
-    // Llamamos a la función de chequeo
-    checkSession();
-  
-    // 3. TUS FUNCIONES DE RESERVAS (Las que ya tienes)
-    async function saveReserva(nuevaReserva) {
-    const { error } = await supabase
-      .from('reservas')
-      .insert([nuevaReserva]); // Se guarda para que todos lo vean
-    
-    if (error) console.error("Error al guardar:", error);
-}
-  
-    // ... el resto de tu código de reservas (render, save, etc.) ...
-  </script> 
+  // 2. CONTROL DE ACCESO
+  async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+          console.log("Sesión activa:", session.user.email);
+          // Ocultamos el login si existiera y arrancamos la app
+          document.getElementById('app-container').style.display = 'block';
+          // Aquí llamaríamos a la función que carga los datos de Supabase
+      } else {
+          mostrarPantallaLogin();
+      }
+  }
+
+  function mostrarPantallaLogin() {
+      // Inyectamos el formulario de login directamente en el cuerpo de la web
+      document.body.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
+          <h2>Acceso Restaurante</h2>
+          <input type="email" id="loginEmail" placeholder="Email" style="margin:5px; padding:10px;">
+          <input type="password" id="loginPass" placeholder="Contraseña" style="margin:5px; padding:10px;">
+          <button onclick="ejecutarLogin()" style="padding:10px 20px; background:#1a3a2a; color:white; border:none; border-radius:8px;">Entrar</button>
+        </div>
+      `;
+  }
+
+  async function ejecutarLogin() {
+      const email = document.getElementById('loginEmail').value;
+      const pass = document.getElementById('loginPass').value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+      if (error) alert("Error: " + error.message);
+      else location.reload();
+  }
+
+  // Iniciamos el chequeo al cargar
+  window.addEventListener('DOMContentLoaded', checkSession);
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Reserves">
