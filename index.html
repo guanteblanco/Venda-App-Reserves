@@ -1092,7 +1092,40 @@ async function iniciarApp() {
       closeModal('modalConfirm');
     }
   });
+// ── CONFIGURACIÓN DE TIEMPO REAL ──────────────────────────────────
+const channel = sb.channel('cambios-reservas')
+  .on(
+    'postgres_changes', 
+    { 
+      event: '*', 
+      schema: 'public', 
+      table: 'Reservas',
+      filter: `user_id=eq.${userId}` // Solo escucha cambios del usuario actual
+    }, 
+    (payload) => {
+      console.log('Cambio detectado en tiempo real:', payload);
 
+      if (payload.eventType === 'INSERT') {
+        // Alguien creó una reserva: la añadimos si no existe
+        if (!reservas.find(r => r.id === payload.new.id)) {
+          reservas.push(payload.new);
+        }
+      } 
+      else if (payload.eventType === 'UPDATE') {
+        // Alguien editó: actualizamos los datos en nuestra lista
+        const idx = reservas.findIndex(r => r.id === payload.new.id);
+        if (idx !== -1) reservas[idx] = payload.new;
+      } 
+      else if (payload.eventType === 'DELETE') {
+        // Alguien borró: la quitamos de nuestra lista
+        reservas = reservas.filter(r => r.id === payload.old.id);
+      }
+
+      // Redibujamos la interfaz con los nuevos datos
+      render();
+    }
+  )
+  .subscribe();
   // ── Arrancar cargando datos de Supabase ───────────────────────────────────
   await cargarReservas();
 }
