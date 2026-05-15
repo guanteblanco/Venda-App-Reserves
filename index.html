@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ── 1. CONFIGURACIÓN SUPABASE ──────────────────────────────────────────
+    // FIX 1: URL sin /rest/v1/ al final
+    // FIX 2: renombrado a "sb" para no colisionar con el objeto global "supabase"
+    const SUPABASE_URL = 'https://nwiqgavvpktzoumzslwh.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53aXFnYXZ2cGt0em91bXpzbHdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MjAwNTYsImV4cCI6MjA5NDM5NjA1Nn0.B7Dnfh_sJZ_T-RR93W63BkE_OLoN38jtoeyjWTqMA0Y';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ── 2. CONTROL DE ACCESO ───────────────────────────────────────────────
+    async function checkSession() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        document.getElementById('app-container').style.display = 'block';
+        iniciarApp();
+      } else {
+        mostrarPantallaLogin();
+      }
+    }
+
+    function mostrarPantallaLogin() {
+      document.body.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f7f5f0;font-family:'Segoe UI',system-ui,sans-serif;padding:1rem">
+          <div style="background:#fff;padding:2.5rem 2rem;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.12);width:100%;max-width:360px;text-align:center">
+            <div style="width:52px;height:52px;background:#1a3a2a;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:26px">🍽️</div>
+            <h2 style="font-size:20px;font-weight:700;color:#1a3a2a;margin-bottom:4px">Libro de Reservas</h2>
+            <p style="font-size:13px;color:#9a9790;margin-bottom:1.75rem">Acceso restringido al personal</p>
+            <input type="email" id="loginEmail" placeholder="Email" autocomplete="email"
+              style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:10px;font-family:inherit;outline:none;box-sizing:border-box">
+            <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"
+              style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:16px;font-family:inherit;outline:none;box-sizing:border-box">
+            <button onclick="ejecutarLogin()"
+              style="width:100%;padding:11px;background:#1a3a2a;color:#e8d5b0;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">
+              Entrar
+            </button>
+            <p id="loginError" style="color:#b93030;font-size:13px;margin-top:10px;display:none"></p>
+          </div>
+        </div>`;
+
+      // Permitir login con Enter
+      document.getElementById('loginPass').addEventListener('keydown', e => {
+        if (e.key === 'Enter') ejecutarLogin();
+      });
+    }
+
+    async function ejecutarLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const pass  = document.getElementById('loginPass').value;
+      const errEl = document.getElementById('loginError');
+      const btn   = document.querySelector('button[onclick="ejecutarLogin()"]');
+
+      btn.textContent = 'Entrando...';
+      btn.disabled = true;
+
+      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+      if (error) {
+        errEl.textContent = 'Email o contraseña incorrectos';
+        errEl.style.display = 'block';
+        btn.textContent = 'Entrar';
+        btn.disabled = false;
+      } else {
+        location.reload();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', checkSession);
+  </script>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Reserves">
+  <link rel="apple-touch-icon" href="icon-512.png">
+  <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Libro de Reservas — Restaurante</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('Service Worker registrado'));
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand: #1a3a2a;
+      --brand-light: #2d6045;
+      --brand-hover: #3a7a5a;
+      --accent: #c8a96e;
+      --accent-light: #e8d5b0;
+      --bg: #f7f5f0;
+      --surface: #ffffff;
+      --surface2: #f0ede6;
+      --surface3: #e8e4db;
+      --border: rgba(0,0,0,0.10);
+      --border-med: rgba(0,0,0,0.16);
+      --text: #1c1c1a;
+      --text2: #5a574f;
+      --text3: #9a9790;
+      --radius: 12px;
+      --radius-md: 8px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+      --shadow: 0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-lg: 0 12px 32px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121410;
+        --surface: #1e211c;
+        --surface2: #272b23;
+        --surface3: #30352c;
+        --border: rgba(255,255,255,0.09);
+        --border-med: rgba(255,255,255,0.15);
+        --text: #f0ede6;
+        --text2: #a8a49c;
+        --text3: #6a675f;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+        --shadow: 0 4px 12px rgba(0,0,0,0.35);
+        --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { width: 100%; }
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Layout */
+    .app-shell { max-width: 900px; margin: 0 auto; padding: 0 1rem 4rem; }
+
+    /* Header */
+    .site-header {
+      background: var(--brand);
+      color: #e8d5b0;
+      padding: 0;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .header-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: .75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: rgba(200,169,110,0.2);
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      color: var(--accent);
+    }
+    .logo-name { font-size: 17px; font-weight: 600; color: #e8d5b0; }
+    .logo-sub  { font-size: 11px; color: rgba(232,213,176,0.55); margin-top: 1px; }
+
+    .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      background: rgba(255,255,255,0.1);
+      border-radius: var(--radius-md);
+      padding: 3px;
+    }
+    .tabs.light { background: var(--surface2); }
+    .tab {
+      padding: 5px 12px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(232,213,176,0.65);
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .tabs.light .tab { color: var(--text2); }
+    .tab.active { background: rgba(255,255,255,0.15); color: #e8d5b0; }
+    .tabs.light .tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border: 1px solid var(--border-med);
+      border-radius: var(--radius-md);
+      background: transparent;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--surface2); }
+    .btn:active { transform: scale(0.98); }
+    .btn.primary { background: var(--accent); color: var(--brand); border-color: transparent; font-weight: 600; }
+    .btn.primary:hover { background: #d4b87a; }
+    .btn.danger { color: #b93030; border-color: rgba(185,48,48,0.25); }
+    .btn.danger:hover { background: #fcebeb; }
+    .btn.success { color: #1d6a4a; border-color: rgba(29,106,74,0.25); }
+    .btn.success:hover { background: #eaf3de; }
+    .btn.sm { padding: 4px 10px; font-size: 12px; }
+    .btn.icon { padding: 6px; width: 30px; height: 30px; justify-content: center; }
+    .btn i { font-size: 15px; }
+
+    /* Logout btn */
+    .btn-logout {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(232,213,176,0.7);
+      padding: 5px 10px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: .15s;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,0.18); color: #e8d5b0; }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2,1fr); } }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-val { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1.1; }
+    .stat-val.accent { color: var(--brand-light); }
+    .stat-val.green  { color: #1d6a4a; }
+    .stat-val.red    { color: #b93030; }
+    .stat-lbl { font-size: 11px; color: var(--text3); margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: .75rem;
+    }
+    .toolbar-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .section-label { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
+
+    /* Filter chips */
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .chip {
+      padding: 4px 12px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all .15s;
+      background: transparent;
+      font-family: inherit;
+    }
+    .chip:hover { border-color: var(--border-med); background: var(--surface2); }
+    .chip.active { background: var(--brand); color: #e8d5b0; border-color: transparent; }
+
+    /* Reservation cards */
+    .res-list { display: flex; flex-direction: column; gap: 10px; }
+    .res-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow .15s;
+    }
+    .res-card:hover { box-shadow: var(--shadow); }
+    .res-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      border-radius: 4px 0 0 4px;
+    }
+    .res-card.pendiente::before     { background: var(--accent); }
+    .res-card.llegado::before       { background: #2d7d56; }
+    .res-card.no-presentado::before { background: #c94a4a; }
+
+    .res-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .res-body { flex: 1; min-width: 0; }
+    .res-name { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+    .res-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
+    .res-date { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+    .res-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+    .badge i { font-size: 12px; }
+    .badge.mediodía      { background: #faeeda; color: #7a4a10; }
+    .badge.noche         { background: #1e1b35; color: #afa9ec; }
+    .badge.personas      { background: var(--surface2); color: var(--text2); }
+    .badge.llegado       { background: #d4f0e4; color: #1a5c3a; }
+    .badge.no-presentado { background: #fde8e8; color: #9a2a2a; }
+    .badge.pendiente     { background: #faeeda; color: #7a4a10; }
+    .badge.tel           { background: var(--surface2); color: var(--text2); }
+
+    /* Notes */
+    .res-notes {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: var(--surface2);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--text2);
+      display: flex;
+      gap: 7px;
+      align-items: flex-start;
+      border-left: 3px solid var(--accent);
+    }
+    .res-notes i { font-size: 14px; flex-shrink: 0; margin-top: 1px; color: var(--accent); }
+
+    /* Mark actions */
+    .mark-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 4rem 1rem; color: var(--text3); }
+    .empty i { font-size: 40px; display: block; margin-bottom: 10px; color: var(--surface3); }
+    .empty p { font-size: 14px; }
+
+    /* Loading state */
+    .loading { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 14px; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(3px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(12px) scale(0.98);
+      transition: transform .2s;
+    }
+    .modal-backdrop.open .modal { transform: translateY(0) scale(1); }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 1;
+    }
+    .modal-title  { font-size: 16px; font-weight: 600; color: var(--text); }
+    .modal-body   { padding: 1.25rem; }
+    .modal-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      position: sticky;
+      bottom: 0;
+      background: var(--surface);
+    }
+
+    /* Form */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+    .form-group { margin-bottom: 12px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .form-label .hint { font-weight: 400; color: var(--text3); text-transform: none; letter-spacing: 0; font-size: 11px; }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      border: 1px solid var(--border-med);
+      border-radius: var(--radius-md);
+      padding: 8px 11px;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: .15s;
+      font-family: inherit;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--brand-light);
+      box-shadow: 0 0 0 3px rgba(45,96,69,.12);
+      background: var(--surface);
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+
+    /* Turn selector */
+    .turn-select { display: flex; gap: 8px; }
+    .turn-btn {
+      flex: 1;
+      padding: 10px 8px;
+      border: 1.5px solid var(--border-med);
+      border-radius: var(--radius-md);
+      background: transparent;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: .15s;
+      color: var(--text2);
+      font-family: inherit;
+      text-align: center;
+    }
+    .turn-btn:hover { background: var(--surface2); }
+    .turn-btn.active {
+      border-color: var(--brand-light);
+      border-width: 2px;
+      color: var(--brand-light);
+      background: rgba(45,96,69,.06);
+      font-weight: 600;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--brand);
+      color: #e8d5b0;
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: .25s;
+      pointer-events: none;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 280px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Divider date group */
+    .date-group-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text3);
+      padding: .5rem 0 .3rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .date-group-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+
+    @media (max-width: 600px) {
+      .site-header { position: relative; }
+      .header-inner { flex-direction: column; align-items: flex-start; }
+      .header-actions { width: 100%; justify-content: space-between; }
+      .res-name { font-size: 14px; }
+      .stat-val { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- El app-container está oculto hasta verificar sesión -->
+<div id="app-container" style="display:none">
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon"><i class="ti ti-tools-kitchen-2"></i></div>
+        <div>
+          <div class="logo-name">Libro de Reservas</div>
+          <div class="logo-sub">Gestión de mesas · Jue–Dom</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="tabs" id="viewTabs">
+          <button class="tab active" data-view="todas">Todas</button>
+          <button class="tab" data-view="hoy">Hoy</button>
+          <button class="tab" data-view="semana">Esta semana</button>
+        </div>
+        <button class="btn primary" id="btnNueva">
+          <i class="ti ti-plus"></i> Nueva reserva
+        </button>
+        <button class="btn-logout" id="btnLogout">
+          <i class="ti ti-logout" style="font-size:13px"></i> Salir
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-val accent" id="sTotal">0</div>
+        <div class="stat-lbl">Total reservas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="sPendientes">0</div>
+        <div class="stat-lbl">Pendientes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val green" id="sLlegados">0</div>
+        <div class="stat-lbl">Han llegado</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="sPersonasHoy">0</div>
+        <div class="stat-lbl">Personas hoy</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <span class="section-label" id="sectionLabel">Todas las reservas</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:var(--text3)">Turno:</span>
+          <div class="tabs light" id="turnTabs">
+            <button class="tab active" data-turn="todos">Todos</button>
+            <button class="tab" data-turn="mediodía">Mediodía</button>
+            <button class="tab" data-turn="noche">Noche</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="searchInput" placeholder="Buscar nombre..."
+          style="padding:6px 10px;border:1px solid var(--border-med);border-radius:var(--radius-md);font-size:12px;background:var(--surface);color:var(--text);outline:none;width:160px;font-family:inherit">
+      </div>
+    </div>
+
+    <div class="chips" id="statusChips">
+      <button class="chip active" data-status="todos">Todos</button>
+      <button class="chip" data-status="pendiente"><i class="ti ti-clock" style="font-size:12px;vertical-align:-1px"></i> Pendientes</button>
+      <button class="chip" data-status="llegado"><i class="ti ti-check" style="font-size:12px;vertical-align:-1px"></i> Han llegado</button>
+      <button class="chip" data-status="no-presentado"><i class="ti ti-user-off" style="font-size:12px;vertical-align:-1px"></i> No presentados</button>
+    </div>
+
+    <div class="res-list" id="resList">
+      <div class="loading"><i class="ti ti-loader" style="font-size:20px;display:block;margin-bottom:8px"></i> Cargando reservas…</div>
+    </div>
+
+  </div>
+
+  <!-- Modal Reserva -->
+  <div class="modal-backdrop" id="modalReserva">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">Nueva reserva</span>
+        <button class="btn icon" id="btnCerrarModal" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre *</label>
+            <input type="text" id="fNombre" placeholder="Nombre">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Apellidos *</label>
+            <input type="text" id="fApellidos" placeholder="Apellidos">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha * <span class="hint">(jue–dom)</span></label>
+            <input type="date" id="fFecha">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora *</label>
+            <input type="time" id="fHora">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Personas *</label>
+            <input type="number" id="fPersonas" min="1" max="50" placeholder="2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input type="tel" id="fTelefono" placeholder="+34 600 000 000">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Turno *</label>
+          <div class="turn-select">
+            <button class="turn-btn" data-turn="mediodía">☀️ Mediodía</button>
+            <button class="turn-btn" data-turn="noche">🌙 Noche</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas / Recordatorios</label>
+          <textarea id="fNotas" placeholder="Ej: Alergia a frutos secos, mesa especial para cumpleaños…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btnCancelarModal">Cancelar</button>
+        <button class="btn primary" id="btnGuardar"><i class="ti ti-check"></i> Guardar reserva</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Confirmar borrado -->
+  <div class="modal-backdrop" id="modalConfirm">
+    <div class="modal" style="max-width:380px">
+      <div class="modal-header">
+        <span class="modal-title">Eliminar reserva</span>
+        <button class="btn icon" id="btnCerrarConfirm"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text2);font-size:14px;line-height:1.6">
+          ¿Seguro que deseas eliminar la reserva de <strong id="deleteNombre"></strong>?
+          Esta acción no se puede deshacer.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btnCancelarDelete">Cancelar</button>
+        <button class="btn danger" id="btnConfirmDelete"><i class="ti ti-trash"></i> Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+</div><!-- /app-container -->
+
+<script>
+// ── App principal — se ejecuta solo si hay sesión ────────────────────────────
+async function iniciarApp() {
+  const DIAS_OK = [4, 5, 6, 0]; // jue, vie, sáb, dom
+  let reservas = [];
+  let editId = null, deleteId = null;
+  let activeView = 'todas', activeTurn = 'todos', activeStatus = 'todos', searchQ = '';
+
+  // ── Obtener user_id de la sesión actual ──────────────────────────────────
+  const { data: { session } } = await sb.auth.getSession();
+  const userId = session.user.id;
+
+  // ── Logout ───────────────────────────────────────────────────────────────
+  document.getElementById('btnLogout').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    location.reload();
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function today() { return new Date().toISOString().split('T')[0]; }
+
+  function weekRange() {
+    const now = new Date(), d = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate() - (d === 0 ? 6 : d - 1));
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return [mon.toISOString().split('T')[0], sun.toISOString().split('T')[0]];
+  }
+
+  function fmtDate(str) {
+    if (!str) return '';
+    const [y, m, d] = str.split('-');
+    const dt = new Date(+y, +m - 1, +d);
+    const dias  = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    return `${dias[dt.getDay()]} ${+d} ${meses[+m - 1]} ${y}`;
+  }
+
+  function isToday(str) { return str === today(); }
+
+  function showToast(msg, icon = 'ti-check') {
+    const t = document.getElementById('toast');
+    t.innerHTML = `<i class="ti ${icon}"></i> ${msg}`;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  function escHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Supabase CRUD ─────────────────────────────────────────────────────────
+
+  async function cargarReservas() {
+    const { data, error } = await sb
+      .from('Reservas')
+      .select('*')
+      .eq('user_id', userId)
+      .order('fecha', { ascending: true })
+      .order('hora',  { ascending: true });
+
+    if (error) {
+      console.error('Error cargando reservas:', error);
+      showToast('Error al cargar las reservas', 'ti-alert-circle');
+      return;
+    }
+    reservas = data || [];
+    render();
+  }
+
+  async function crearReserva(datos) {
+    const { data, error } = await sb
+      .from('Reservas')
+      .insert([{ ...datos, user_id: userId, estado: 'pendiente' }])
+      .select()
+      .single();
+
+    if (error) { showToast('Error al crear la reserva', 'ti-alert-circle'); return false; }
+    reservas.push(data);
+    return true;
+  }
+
+  async function actualizarReserva(id, cambios) {
+    const { error } = await sb
+      .from('Reservas')
+      .update(cambios)
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) { showToast('Error al actualizar', 'ti-alert-circle'); return false; }
+    const idx = reservas.findIndex(r => r.id === id);
+    if (idx !== -1) Object.assign(reservas[idx], cambios);
+    return true;
+  }
+
+  async function eliminarReserva(id) {
+    const { error } = await sb
+      .from('Reservas')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) { showToast('Error al eliminar', 'ti-alert-circle'); return false; }
+    reservas = reservas.filter(r => r.id !== id);
+    return true;
+  }
+
+  // ── Filter & sort ─────────────────────────────────────────────────────────
+  function filtered() {
+    let r = [...reservas];
+    if (activeView === 'hoy') r = r.filter(x => x.fecha === today());
+    else if (activeView === 'semana') {
+      const [a, b] = weekRange();
+      r = r.filter(x => x.fecha >= a && x.fecha <= b);
+    }
+    if (activeTurn !== 'todos') r = r.filter(x => x.turno === activeTurn);
+    if (activeStatus !== 'todos') r = r.filter(x => x.estado === activeStatus);
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      r = r.filter(x => (x.nombre + ' ' + x.apellidos).toLowerCase().includes(q));
+    }
+    r.sort((a, b) => a.fecha === b.fecha ? a.hora.localeCompare(b.hora) : a.fecha.localeCompare(b.fecha));
+    return r;
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  function updateStats() {
+    const tod = reservas.filter(x => x.fecha === today());
+    document.getElementById('sTotal').textContent      = reservas.length;
+    document.getElementById('sPendientes').textContent = reservas.filter(x => x.estado === 'pendiente').length;
+    document.getElementById('sLlegados').textContent   = reservas.filter(x => x.estado === 'llegado').length;
+    document.getElementById('sPersonasHoy').textContent = tod.reduce((s, x) => s + (parseInt(x.personas) || 0), 0);
+  }
+
+  // ── Render list ───────────────────────────────────────────────────────────
+  function render() {
+    updateStats();
+    const list = filtered();
+    const el = document.getElementById('resList');
+
+    if (!list.length) {
+      el.innerHTML = `<div class="empty">
+        <i class="ti ti-calendar-off"></i>
+        <p>No hay reservas para mostrar</p>
+      </div>`;
+      return;
+    }
+
+    const groups = {};
+    list.forEach(r => {
+      if (!groups[r.fecha]) groups[r.fecha] = [];
+      groups[r.fecha].push(r);
+    });
+
+    let html = '';
+    Object.keys(groups).forEach(fecha => {
+      const label = isToday(fecha) ? `Hoy · ${fmtDate(fecha)}` : fmtDate(fecha);
+      html += `<div class="date-group-label">${label}</div>`;
+      groups[fecha].forEach(r => { html += cardHTML(r); });
+    });
+
+    el.innerHTML = html;
+  }
+
+  function cardHTML(r) {
+    const turnBadge   = `<span class="badge ${r.turno}">${r.turno === 'mediodía' ? '☀️' : '🌙'} ${r.turno}</span>`;
+    const paxBadge    = `<span class="badge personas"><i class="ti ti-users"></i> ${r.personas} pers.</span>`;
+    const estadoBadge = r.estado === 'llegado'
+      ? `<span class="badge llegado"><i class="ti ti-check"></i> Ha llegado</span>`
+      : r.estado === 'no-presentado'
+        ? `<span class="badge no-presentado"><i class="ti ti-x"></i> No presentado</span>`
+        : `<span class="badge pendiente"><i class="ti ti-clock"></i> Pendiente</span>`;
+    const telBadge  = r.telefono ? `<span class="badge tel"><i class="ti ti-phone"></i> ${escHtml(r.telefono)}</span>` : '';
+    const notasHtml = r.notas
+      ? `<div class="res-notes"><i class="ti ti-note"></i><span>${escHtml(r.notas)}</span></div>` : '';
+
+    let markHtml = '';
+    if (r.estado === 'pendiente') {
+      markHtml = `<div class="mark-row">
+        <button class="btn sm success" data-action="mark" data-id="${r.id}" data-val="llegado"><i class="ti ti-check"></i> Marcar llegado</button>
+        <button class="btn sm danger" data-action="mark" data-id="${r.id}" data-val="no-presentado"><i class="ti ti-user-off"></i> No se ha presentado</button>
+      </div>`;
+    } else {
+      markHtml = `<div class="mark-row">
+        <button class="btn sm" data-action="mark" data-id="${r.id}" data-val="pendiente"><i class="ti ti-refresh"></i> Volver a pendiente</button>
+      </div>`;
+    }
+
+    return `<div class="res-card ${r.estado}" data-id="${r.id}">
+      <div class="res-top">
+        <div class="res-body">
+          <div class="res-name">${escHtml(r.nombre)} ${escHtml(r.apellidos)}</div>
+          <div class="res-meta">${turnBadge}${paxBadge}${estadoBadge}${telBadge}</div>
+          <div class="res-date"><i class="ti ti-clock" style="font-size:12px"></i> ${r.hora}</div>
+        </div>
+        <div class="res-actions">
+          <button class="btn icon" data-action="edit" data-id="${r.id}" title="Editar"><i class="ti ti-edit"></i></button>
+          <button class="btn icon danger" data-action="delete" data-id="${r.id}" title="Eliminar"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      ${notasHtml}
+      ${markHtml}
+    </div>`;
+  }
+
+  // ── Event delegation on list ──────────────────────────────────────────────
+  document.getElementById('resList').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const { action, id, val } = btn.dataset;
+
+    if (action === 'mark') {
+      const ok = await actualizarReserva(id, { estado: val });
+      if (ok) {
+        const msgs = { llegado: '✓ Marcado como llegado', 'no-presentado': 'Marcado como no presentado', pendiente: 'Vuelto a pendiente' };
+        showToast(msgs[val] || 'Actualizado');
+        render();
+      }
+    } else if (action === 'edit') {
+      openEdit(id);
+    } else if (action === 'delete') {
+      const r = reservas.find(x => x.id === id);
+      if (r) {
+        deleteId = id;
+        document.getElementById('deleteNombre').textContent = `${r.nombre} ${r.apellidos}`;
+        openModal('modalConfirm');
+      }
+    }
+  });
+
+  // ── Modal helpers ─────────────────────────────────────────────────────────
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  document.getElementById('btnCerrarModal').addEventListener('click',  () => closeModal('modalReserva'));
+  document.getElementById('btnCancelarModal').addEventListener('click', () => closeModal('modalReserva'));
+  document.getElementById('btnCerrarConfirm').addEventListener('click', () => closeModal('modalConfirm'));
+  document.getElementById('btnCancelarDelete').addEventListener('click',() => closeModal('modalConfirm'));
+
+  document.querySelectorAll('.modal-backdrop').forEach(bd => {
+    bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); });
+  });
+
+  // ── Turn buttons in form ──────────────────────────────────────────────────
+  function setTurn(t) {
+    document.querySelectorAll('.turn-btn').forEach(b => b.classList.toggle('active', b.dataset.turn === t));
+  }
+  document.querySelectorAll('.turn-btn').forEach(b => b.addEventListener('click', () => setTurn(b.dataset.turn)));
+
+  // ── New reservation ───────────────────────────────────────────────────────
+  document.getElementById('btnNueva').addEventListener('click', () => {
+    editId = null;
+    document.getElementById('modalTitle').textContent = 'Nueva reserva';
+    ['fNombre','fApellidos','fFecha','fHora','fPersonas','fTelefono','fNotas'].forEach(id => document.getElementById(id).value = '');
+    document.querySelectorAll('.turn-btn').forEach(b => b.classList.remove('active'));
+    openModal('modalReserva');
+    setTimeout(() => document.getElementById('fNombre').focus(), 200);
+  });
+
+  // ── Edit reservation ──────────────────────────────────────────────────────
+  function openEdit(id) {
+    const r = reservas.find(x => x.id === id);
+    if (!r) return;
+    editId = id;
+    document.getElementById('modalTitle').textContent = 'Editar reserva';
+    document.getElementById('fNombre').value    = r.nombre    || '';
+    document.getElementById('fApellidos').value = r.apellidos || '';
+    document.getElementById('fFecha').value     = r.fecha     || '';
+    document.getElementById('fHora').value      = r.hora      || '';
+    document.getElementById('fPersonas').value  = r.personas  || '';
+    document.getElementById('fTelefono').value  = r.telefono  || '';
+    document.getElementById('fNotas').value     = r.notas     || '';
+    setTurn(r.turno);
+    openModal('modalReserva');
+    setTimeout(() => document.getElementById('fNombre').focus(), 200);
+  }
+
+  // ── Save reservation ──────────────────────────────────────────────────────
+  document.getElementById('btnGuardar').addEventListener('click', async () => {
+    const nombre    = document.getElementById('fNombre').value.trim();
+    const apellidos = document.getElementById('fApellidos').value.trim();
+    const fecha     = document.getElementById('fFecha').value;
+    const hora      = document.getElementById('fHora').value;
+    const personas  = parseInt(document.getElementById('fPersonas').value);
+    const telefono  = document.getElementById('fTelefono').value.trim();
+    const notas     = document.getElementById('fNotas').value.trim();
+    const turnBtn   = document.querySelector('.turn-btn.active');
+    const turno     = turnBtn ? turnBtn.dataset.turn : '';
+
+    if (!nombre || !apellidos || !fecha || !hora || !personas || !turno) {
+      showToast('Completa todos los campos obligatorios', 'ti-alert-circle');
+      return;
+    }
+    const [y, m, d] = fecha.split('-').map(Number);
+    if (!DIAS_OK.includes(new Date(y, m - 1, d).getDay())) {
+      showToast('Solo se trabaja de jueves a domingo', 'ti-calendar-off');
+      return;
+    }
+
+    const btn = document.getElementById('btnGuardar');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader"></i> Guardando…';
+
+    let ok;
+    if (editId) {
+      ok = await actualizarReserva(editId, { nombre, apellidos, fecha, hora, personas, telefono, notas, turno });
+      if (ok) showToast('Reserva actualizada');
+    } else {
+      ok = await crearReserva({ nombre, apellidos, fecha, hora, personas, telefono, notas, turno });
+      if (ok) showToast('Reserva creada');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-check"></i> Guardar reserva';
+
+    if (ok) { render(); closeModal('modalReserva'); }
+  });
+
+  // ── Delete ────────────────────────────────────────────────────────────────
+  document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
+    const ok = await eliminarReserva(deleteId);
+    if (ok) {
+      render();
+      closeModal('modalConfirm');
+      showToast('Reserva eliminada', 'ti-trash');
+    }
+  });
+
+  // ── View / turn / status filters ──────────────────────────────────────────
+  document.getElementById('viewTabs').addEventListener('click', e => {
+    const t = e.target.closest('.tab');
+    if (!t) return;
+    activeView = t.dataset.view;
+    document.querySelectorAll('#viewTabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const labels = { todas: 'Todas las reservas', hoy: 'Reservas de hoy', semana: 'Esta semana' };
+    document.getElementById('sectionLabel').textContent = labels[activeView];
+    render();
+  });
+
+  document.getElementById('turnTabs').addEventListener('click', e => {
+    const t = e.target.closest('.tab');
+    if (!t) return;
+    activeTurn = t.dataset.turn;
+    document.querySelectorAll('#turnTabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    render();
+  });
+
+  document.getElementById('statusChips').addEventListener('click', e => {
+    const c = e.target.closest('.chip');
+    if (!c) return;
+    activeStatus = c.dataset.status;
+    document.querySelectorAll('#statusChips .chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    render();
+  });
+
+  document.getElementById('searchInput').addEventListener('input', e => {
+    searchQ = e.target.value.trim();
+    render();
+  });
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'n' && !e.ctrlKey && !e.metaKey &&
+        document.activeElement.tagName !== 'INPUT' &&
+        document.activeElement.tagName !== 'TEXTAREA') {
+      document.getElementById('btnNueva').click();
+    }
+    if (e.key === 'Escape') {
+      closeModal('modalReserva');
+      closeModal('modalConfirm');
+    }
+  });
+
+  // ── Arrancar cargando datos de Supabase ───────────────────────────────────
+  await cargarReservas();
+}
+</script>
+</body>
+</html>
